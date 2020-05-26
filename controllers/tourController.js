@@ -30,6 +30,37 @@ exports.uploadTourImages = upload.fields([
 ]);
 
 // upload.array('images', 5)
+exports.resizeTourImages = catchAsync(async (req, res, next) => {
+	if (!req.files.imageCover || !req.files.images) return next();
+
+	// 1. Cover Image
+	req.body.imageCover = `tour-${req.params.id}-${Date.now()}-cover.jpeg`;
+	await sharp(req.files.imageCover[0].buffer)
+		.resize(2000, 1333)
+		.toFormat('jpeg')
+		.jpeg({ quality: 90 })
+		.toFile(`public/img/tours/${req.body.imageCover}`);
+
+	// 2. Images
+
+	req.body.images = [];
+
+	// 因async為callback function，若沒使用 Promise.all，會直接往下執行到next()
+	await Promise.all(
+		req.files.images.map(async (file, index) => {
+			const fileName = `tour-${req.params.id}-${Date.now()}-${
+				index + 1
+			}.jpeg`;
+			await sharp(file.buffer)
+				.resize(2000, 1333)
+				.toFormat('jpeg')
+				.jpeg({ quality: 90 })
+				.toFile(`public/img/tours/${fileName}`);
+			req.body.images.push(fileName);
+		})
+	);
+	next();
+});
 
 exports.aliasTopTours = (req, res, next) => {
 	req.query.limit = '5';
